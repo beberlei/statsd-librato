@@ -159,8 +159,9 @@ class Config
     }
 }
 
+$max = isset($argv[1]) ? $argv[1] : 60;
 $ticks = 0;
-while (true) {
+while ($ticks < $max) {
     StatsD::timing('foo', rand(100, 200));
     StatsD::gauge('bar', rand(1, 3));
     StatsD::increment('baz', rand(1, 5));

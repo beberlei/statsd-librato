@@ -1,5 +1,71 @@
 <html>
     <head>
         <title>StatsD Local Frontend</title>
+        <link rel="stylesheet" type="text/css" href="//maxcdn.bootstrapcdn.com/bootstrap/3.3.1/css/bootstrap.min.css" />
+        <style type="text/css">
+            body {
+                padding: 20px;
+                font-size: 14pt;
+                font-family: sans-serif;
+            }
+            .number {
+                text-align: right;
+            }
+        </style>
     </head>
+
+    <body>
+        <div id="metrics" class="row">
+        </div>
+
+        <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/jquery/2.1.3/jquery.min.js"></script>
+        <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mustache.js/0.8.1/mustache.min.js"></script>
+        <script type="text/javascript" src="//cdnjs.cloudflare.com/ajax/libs/jqueryui/1.11.2/jquery-ui.min.js"></script>
+        <script>
+            $(document).ready(function() {
+                var $metrics = $("#metrics");
+                var template = $("#metric-template").html();
+
+                setInterval(function () {
+                    $.getJSON("/data.json", function (data) {
+                        for (var key in data) {
+                            var value = Math.round(data[key] * 100) / 100;
+                            var $entry = $metrics.find('[data-metric="' + key + '"]');
+
+                            if ($entry.length == 1) {
+                                var previousValue = $entry.data('metric-value');
+                                $entry.data('metric-value', value);
+                                $entry.find('.number').text(value);
+
+                                var changed = (previousValue != value); 
+
+                                if (changed) {
+                                    $entry.find('.panel').effect('highlight', 250);
+                                }
+                            } else {
+                                var html = Mustache.render(template, {
+                                    metric: key,
+                                    value: value
+                                });
+                                $metrics.append(html);
+                            }
+                        }
+                    });
+                }, 1000);
+            });
+        </script>
+
+        <script type="text/template" id="metric-template">
+            <div class="col-lg-4 col-md-6 col-sm-12" data-metric="{{ metric }}" data-metric-value="{{ value }}">
+                <div class="panel panel-default">
+                    <div class="panel-body">
+                        <div class="row">
+                            <div class="col-xs-8 metric">{{ metric }}</div>
+                            <div class="col-xs-4 number">{{ value }}</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </script>
+    </body>
 </html>

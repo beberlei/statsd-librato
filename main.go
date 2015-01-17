@@ -82,38 +82,44 @@ func monitor() {
 	}
 }
 
-func submit() (err error) {
-	m := statsd.Measurement{
+func prepareMeasurements(counters map[string]int64, timers map[string][]float64, gauges map[string]float64) statsd.Measurement {
+    m := statsd.Measurement{
         Source: *source,
         Counters: make([]statsd.Counter, 0),
         Gauges: make([]interface{}, 0),
     }
 
-	for k, v := range counters {
+    for k, v := range counters {
         c := statsd.Counter{Name: k, Value: v}
-		m.Counters = append(m.Counters, c)
-	}
+        m.Counters = append(m.Counters, c)
+    }
 
-	for k, v := range gauges {
+    for k, v := range gauges {
         g := statsd.SimpleGauge{Name: k, Value: v}
-		m.Gauges = append(m.Gauges, g)
-	}
+        m.Gauges = append(m.Gauges, g)
+    }
 
-	for k, t := range timers {
+    for k, t := range timers {
         g := statsd.ComplexGauge{Name: k, Count: len(t)}
 
-		if g.Count > 0 {
-			sort.Float64s(t)
-			g.Min = t[0]
-			g.Max = t[len(t)-1]
-			for _, v := range t {
-				g.Sum += v
-				g.SumSquares += (v * v)
-			}
-		}
+        if g.Count > 0 {
+            sort.Float64s(t)
+            g.Min = t[0]
+            g.Max = t[len(t)-1]
+            for _, v := range t {
+                g.Sum += v
+                g.SumSquares += (v * v)
+            }
+        }
 
-		m.Gauges = append(m.Gauges, g)
-	}
+        m.Gauges = append(m.Gauges, g)
+    }
+
+    return m
+}
+
+func submit() (err error) {
+	m := prepareMeasurements(counters, timers, gauges)
 
 	if m.Count() == 0 {
 		log.Info("no new measurements in the last %d seconds", *flushInterval)
@@ -132,6 +138,10 @@ func submit() (err error) {
 	for k, _ := range timers {
 		delete(timers, k)
 	}
+
+    for k, _ := range counters {
+        counters[k] = 0
+    }
 
 	return
 }
