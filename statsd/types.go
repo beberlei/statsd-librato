@@ -1,5 +1,9 @@
 package statsd
 
+import (
+    "github.com/jcoene/gologger"
+)
+
 type Measurement struct {
     Counters []Counter     `json:"counters"`
     Gauges   []interface{} `json:"gauges"`
@@ -30,5 +34,6 @@ type ComplexGauge struct {
 }
 
 type DataBackend interface {
-    Submit(m *Measurement) (err error)
+    Init(log *logger.Logger) (err error)
+    Submit(m Measurement) (err error)
 }

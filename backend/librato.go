@@ -5,6 +5,7 @@ import (
     "errors"
     "encoding/json"
     "fmt"
+    "github.com/jcoene/gologger"
     "github.com/beberlei/statsd-librato-go/statsd"
     "net/http"
     "io/ioutil"
@@ -15,7 +16,11 @@ type Librato struct {
     Token string
 }
 
-func (s Librato) Submit(m *statsd.Measurement) (err error) {
+func (s *Librato) Init(log *logger.Logger) (err error) {
+    return nil
+}
+
+func (s *Librato) Submit(m statsd.Measurement) (err error) {
     payload, err := json.MarshalIndent(m, "", "  ")
 
     if err != nil {

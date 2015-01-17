@@ -28,6 +28,7 @@ var statsdBackend statsd.DataBackend;
 
 var (
 	serviceAddress = flag.String("address", "0.0.0.0:8125", "UDP service address")
+    httpAddress    = flag.String("http", "127.0.0.1:8126", "HTTP Interface to metrics")
 	libratoUser    = flag.String("user", "", "Librato Username")
 	libratoToken   = flag.String("token", "", "Librato API Token")
 	source         = flag.String("source", "", "Librato Source")
@@ -82,29 +83,24 @@ func monitor() {
 }
 
 func submit() (err error) {
-	m := new(statsd.Measurement)
-	m.Source = *source
-	m.Counters = make([]statsd.Counter, 0)
-	m.Gauges = make([]interface{}, 0)
+	m := statsd.Measurement{
+        Source: *source,
+        Counters: make([]statsd.Counter, 0),
+        Gauges: make([]interface{}, 0),
+    }
 
 	for k, v := range counters {
-		c := new(statsd.Counter)
-		c.Name = k
-		c.Value = v
-		m.Counters = append(m.Counters, *c)
+        c := statsd.Counter{Name: k, Value: v}
+		m.Counters = append(m.Counters, c)
 	}
 
 	for k, v := range gauges {
-		g := new(statsd.SimpleGauge)
-		g.Name = k
-		g.Value = v
-		m.Gauges = append(m.Gauges, *g)
+        g := statsd.SimpleGauge{Name: k, Value: v}
+		m.Gauges = append(m.Gauges, g)
 	}
 
 	for k, t := range timers {
-		g := new(statsd.ComplexGauge)
-		g.Name = k
-		g.Count = len(t)
+        g := statsd.ComplexGauge{Name: k, Count: len(t)}
 
 		if g.Count > 0 {
 			sort.Float64s(t)
@@ -116,7 +112,7 @@ func submit() (err error) {
 			}
 		}
 
-		m.Gauges = append(m.Gauges, *g)
+		m.Gauges = append(m.Gauges, g)
 	}
 
 	if m.Count() == 0 {
@@ -199,7 +195,18 @@ func main() {
 		log = logger.NewLogger(logger.LOG_LEVEL_INFO, "statsd")
 	}
 
-    statsdBackend = backend.Librato{User: *libratoUser, Token: *libratoToken}
+    if (*libratoUser == "" || *libratoToken == "") {
+        b := new(backend.Http)
+        b.Address = *httpAddress
+        statsdBackend = b
+    } else {
+        b := new(backend.Librato)
+        b.User = *libratoUser
+        b.Token = *libratoToken
+        statsdBackend = b
+    }
+
+    statsdBackend.Init(log)
 
 	go listen()
 	monitor()
