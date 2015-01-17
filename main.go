@@ -2,14 +2,11 @@ package main
 
 import (
 	"bytes"
-	"encoding/json"
-	"errors"
 	"flag"
-	"fmt"
 	"github.com/jcoene/gologger"
-	"io/ioutil"
+    "github.com/beberlei/statsd-librato-go/statsd"
+    "github.com/beberlei/statsd-librato-go/backend"
 	"net"
-	"net/http"
 	"os"
 	"regexp"
 	"sort"
@@ -27,12 +24,13 @@ type Packet struct {
 var log *logger.Logger
 var sanitizeRegexp = regexp.MustCompile("[^a-zA-Z0-9\\-_\\.:\\|@]")
 var packetRegexp = regexp.MustCompile("([a-zA-Z0-9_\\.]+):(\\-?[0-9\\.]+)\\|(c|ms|g)(\\|@([0-9\\.]+))?")
+var statsdBackend statsd.DataBackend;
 
 var (
 	serviceAddress = flag.String("address", "0.0.0.0:8125", "UDP service address")
 	libratoUser    = flag.String("user", "", "Librato Username")
 	libratoToken   = flag.String("token", "", "Librato API Token")
-	libratoSource  = flag.String("source", "", "Librato Source")
+	source         = flag.String("source", "", "Librato Source")
 	flushInterval  = flag.Int64("flush", 60, "Flush Interval (seconds)")
 	debug          = flag.Bool("debug", false, "Enable Debugging")
 )
@@ -44,35 +42,6 @@ var (
 	gauges   = make(map[string]float64)
 )
 
-type Measurement struct {
-	Counters []Counter     `json:"counters"`
-	Gauges   []interface{} `json:"gauges"`
-	Source   string        `json:"source"`
-}
-
-func (m *Measurement) Count() int {
-	return (len(m.Counters) + len(m.Gauges))
-}
-
-type Counter struct {
-	Name  string `json:"name"`
-	Value int64  `json:"value"`
-}
-
-type SimpleGauge struct {
-	Name  string  `json:"name"`
-	Value float64 `json:"value"`
-}
-
-type ComplexGauge struct {
-	Name       string  `json:"name"`
-	Count      int     `json:"count"`
-	Sum        float64 `json:"sum"`
-	Min        float64 `json:"min"`
-	Max        float64 `json:"max"`
-	SumSquares float64 `json:"sum_squares"`
-}
-
 func monitor() {
 	t := time.NewTicker(time.Duration(*flushInterval) * time.Second)
 
@@ -83,6 +52,8 @@ func monitor() {
 				log.Error("submit: %s", err)
 			}
 		case s := <-In:
+            log.Debug("Recieved packet %s=%s", s.Bucket, s.Value);
+
 			if s.Modifier == "ms" {
 				_, ok := timers[s.Bucket]
 				if !ok {
@@ -111,27 +82,27 @@ func monitor() {
 }
 
 func submit() (err error) {
-	m := new(Measurement)
-	m.Source = *libratoSource
-	m.Counters = make([]Counter, 0)
+	m := new(statsd.Measurement)
+	m.Source = *source
+	m.Counters = make([]statsd.Counter, 0)
 	m.Gauges = make([]interface{}, 0)
 
 	for k, v := range counters {
-		c := new(Counter)
+		c := new(statsd.Counter)
 		c.Name = k
 		c.Value = v
 		m.Counters = append(m.Counters, *c)
 	}
 
 	for k, v := range gauges {
-		g := new(SimpleGauge)
+		g := new(statsd.SimpleGauge)
 		g.Name = k
 		g.Value = v
 		m.Gauges = append(m.Gauges, *g)
 	}
 
 	for k, t := range timers {
-		g := new(ComplexGauge)
+		g := new(statsd.ComplexGauge)
 		g.Name = k
 		g.Count = len(t)
 
@@ -153,30 +124,12 @@ func submit() (err error) {
 		return
 	}
 
-	payload, err := json.MarshalIndent(m, "", "  ")
-	if err != nil {
-		return
-	}
+    err = statsdBackend.Submit(m)
 
-	log.Debug("sending payload:\n%s", payload)
-
-	req, err := http.NewRequest("POST", "https://metrics-api.librato.com/v1/metrics", bytes.NewBuffer(payload))
-	if err != nil {
-		return
-	}
-
-	req.Header.Add("Content-Type", "application/json")
-	req.Header.Set("User-Agent", "statsd/1.0")
-	req.SetBasicAuth(*libratoUser, *libratoToken)
-	resp, err := http.DefaultClient.Do(req)
-	if err == nil && resp.StatusCode != 200 {
-		if err == nil {
-			raw, _ := ioutil.ReadAll(resp.Body)
-			err = errors.New(fmt.Sprintf("%s: %s", resp.Status, string(raw)))
-		}
-		log.Warn("error sending %d measurements: %s", m.Count(), err)
-		return
-	}
+    if err != nil {
+        log.Warn("error sending %d measurements: %s", m.Count(), err)
+        return
+    }
 
 	log.Info("%d measurements sent", m.Count())
 
@@ -245,6 +198,8 @@ func main() {
 	} else {
 		log = logger.NewLogger(logger.LOG_LEVEL_INFO, "statsd")
 	}
+
+    statsdBackend = backend.Librato{User: *libratoUser, Token: *libratoToken}
 
 	go listen()
 	monitor()
