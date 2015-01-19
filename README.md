@@ -7,7 +7,7 @@ This was forked from
 [jbuchbinder/statsd-go](https://github.com/jbuchbinder/statsd-go) and altered
 to provide support for Librato as a submission backend.  Besides the Librato
 backend it now also contains a backend for locally displaying the data
-from a HTTP server. This is helpful for development enviornments that make use
+from a HTTP server. This is helpful for development environments that make use
 of statsd.
 
 # Usage
