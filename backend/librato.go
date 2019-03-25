@@ -14,6 +14,7 @@ import (
 type Librato struct {
     User string
     Token string
+    Url string
 }
 
 func (s *Librato) Init(log *logger.Logger) (err error) {
@@ -27,7 +28,7 @@ func (s *Librato) Submit(m statsd.Measurement) (err error) {
         return err
     }
 
-    req, err := http.NewRequest("POST", "https://metrics-api.librato.com/v1/metrics", bytes.NewBuffer(payload))
+    req, err := http.NewRequest("POST", s.Url, bytes.NewBuffer(payload))
     if err != nil {
         return err
     }
