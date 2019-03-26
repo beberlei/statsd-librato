@@ -1,3 +1,4 @@
 main
 statsd-librato
 statsd-librato-go
+.idea/
