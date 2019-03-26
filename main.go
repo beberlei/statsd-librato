@@ -32,7 +32,7 @@ var (
 	libratoUser    = flag.String("user", "", "Librato Username")
 	libratoToken   = flag.String("token", "", "Librato API Token")
 	source         = flag.String("source", "", "Librato Source")
-	url 		   = flag.String("url", "", "Librato Url")
+	url 		   = flag.String("url", "https://metrics-api.librato.com/v1/metrics", "Librato Url")
 	flushInterval  = flag.Int64("flush", 60, "Flush Interval (seconds)")
 	debug          = flag.Bool("debug", false, "Enable Debugging")
 )
