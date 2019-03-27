@@ -17,6 +17,7 @@ var (
 	libratoToken  = flag.String("token", "", "librato api token (LIBRATO_TOKEN)")
 	libratoSource = flag.String("source", "", "librato api source (LIBRATO_SOURCE)")
 	interval      = flag.Int64("flush", 60, "interval at which data is sent to librato (in seconds)")
+	snapTime      = flag.Bool("snaptime", false, "snap timestamps to interval, to align with other servers started at different offsets")
 	percentiles   = flag.String("percentiles", "", "comma separated list of percentiles to calculate for timers (eg. \"95,99.5\")")
 	proxy         = flag.String("proxy", "", "send metrics to a proxy rather than directly to librato")
 	debug         = flag.Bool("debug", false, "enable logging of inputs and submissions")
