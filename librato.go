@@ -61,7 +61,7 @@ func submitLibrato() (err error) {
 		log.Printf("sending payload:\n%s\n", string(payload))
 	}
 
-	req, err := http.NewRequest("POST", "https://metrics-api.librato.com/v1/metrics", bytes.NewBuffer(payload))
+	req, err := http.NewRequest("POST", *url, bytes.NewBuffer(payload))
 	if err != nil {
 		return
 	}
