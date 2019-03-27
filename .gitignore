@@ -2,3 +2,6 @@ main
 statsd-librato
 statsd-librato-go
 .idea/
+dist
+statsd
+statsd_linux_amd64
